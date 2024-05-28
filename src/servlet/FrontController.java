@@ -1,6 +1,7 @@
 package servlet;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
@@ -105,6 +106,27 @@ public class FrontController extends HttpServlet {
                 out.println("<p>Found mapping:</p>");
                 out.println("<p>Class: " + mapping.getClassName() + "</p>");
                 out.println("<p>Method: " + mapping.getMethodName() + "</p>");
+
+                try {
+                
+                    Class<?> cls = Class.forName(mapping.getClassName());
+                    Method method = cls.getMethod(mapping.getMethodName());
+                    Object obj = cls.getConstructor().newInstance();
+                    Object result = method.invoke(obj);
+                    out.println("<p>Method " + mapping.getMethodName() + " executed successfully.</p>");
+                    out.println("<p>Result: " + result + "</p>");
+                    
+                } catch (ClassNotFoundException e) {
+                    out.println("<p>Class not found: " + mapping.getClassName() + "</p>");
+                    e.printStackTrace();
+                } catch (NoSuchMethodException e) {
+                    out.println("<p>Method not found: " + mapping.getMethodName() + "</p>");
+                    e.printStackTrace();
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                    out.println("<p>Error invoking method: " + e.getMessage() + "</p>");
+                    e.printStackTrace();
+                }
+
             } else {
                 out.println("<p>Aucune méthode associée</p>");
             }
