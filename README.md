@@ -66,3 +66,8 @@
             - Type de retour : afficher que le type de retour est introuvable 
             - Erreur 404 si on ne trouve pas de page lier a la methode placer par l'utilisateur 
     
+- Sprint 6 : 
+    - Gestion formulaire : 
+        - Gerer les parametres entrant avec l'annotation @Param 
+        - Traitement des types de parametre string 
+        - renvoie vers une vue 

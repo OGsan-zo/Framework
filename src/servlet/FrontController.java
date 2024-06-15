@@ -3,8 +3,12 @@ package servlet;
 import java.io.*;
 import java.util.HashMap;
 import java.util.List;
-import javax.servlet.*;
-import javax.servlet.http.*;
+
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import controller.*;
 import other.*;

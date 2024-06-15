@@ -3,17 +3,23 @@ package other;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.HashMap;
 import java.util.List;
-import javax.servlet.*;
-import javax.servlet.http.*;
+
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import annotation.Get;
-import controller.*;
+import annotation.Param;
 
 public class Utils {
 
-    public static String initializeControllerPackage(ServletConfig config) throws ServletException {
+    public static String initializeControllerPackage(ServletConfig config) 
+        throws ServletException {
         String controllerPackage = config.getInitParameter("base_package");
         if (controllerPackage == null) {
             throw new ServletException("Base package is not specified in web.xml");
@@ -21,7 +27,8 @@ public class Utils {
         return controllerPackage;
     }
 
-    public static void validateUniqueMappingValues(List<Class<?>> controllers) throws ServletException {
+    public static void validateUniqueMappingValues(List<Class<?>> controllers) 
+        throws ServletException {
         if (controllers == null) {
             throw new ServletException("The controllers list is null");
         }
@@ -81,7 +88,7 @@ public class Utils {
     }
 
     public static void displayFormData(PrintWriter out, HashMap<String, String> formData) {
-        out.println("<h2>Form Data</h2>");
+        out.println("<hr><h2>Form Data</h2>");
         formData.forEach((key, value) -> out.println("<p>" + key + ": " + value + "</p>"));
     }
 
@@ -99,7 +106,7 @@ public class Utils {
 
     public static void invokeMethod(Mapping mapping, PrintWriter out, HttpServletRequest request, HttpServletResponse response, HashMap<String, String> formData) throws ServletException, IOException {
         try {
-            Object result = executeControllerMethod(mapping, formData);
+            Object result = executeControllerMethod(mapping, request);
             processMethodResult(result, out, request, response);
         } catch (Exception e) {
             out.println("<p>Error invoking method: " + e.getMessage() + "</p>");
@@ -107,12 +114,56 @@ public class Utils {
         }
     }
 
-    public static Object executeControllerMethod(Mapping mapping, HashMap<String, String> formData) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    public static Object executeControllerMethod(Mapping mapping, HttpServletRequest request) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
         Class<?> cls = Class.forName(mapping.getClassName());
-        Method method = cls.getMethod(mapping.getMethodName(), HashMap.class);
+        Method method = findMethodWithRequestParams(cls, mapping.getMethodName());
         Object obj = cls.getConstructor().newInstance();
-        return method.invoke(obj, formData);
+        Object[] params = getMethodParams(method, request);
+        return method.invoke(obj, params);
     }
+
+    private static Method findMethodWithRequestParams(Class<?> cls, String methodName) throws NoSuchMethodException {
+        Method[] methods = cls.getDeclaredMethods();
+        for (Method method : methods) {
+            if (method.getName().equals(methodName)) {
+                return method;
+            }
+        }
+        throw new NoSuchMethodException("Method " + methodName + " not found in class " + cls.getName());
+    }
+
+    private static Object[] getMethodParams(Method method, HttpServletRequest request) {
+        Parameter[] parameters = method.getParameters();
+        Object[] paramValues = new Object[parameters.length];
+
+        for (int i = 0; i < parameters.length; i++) {
+            Param param = parameters[i].getAnnotation(Param.class);
+            if (param != null) {
+                String paramName = param.name();
+                String paramValue = request.getParameter(paramName);
+                paramValues[i] = convertToParameterType(parameters[i].getType(), paramValue);
+            }
+        }
+
+        return paramValues;
+    }
+
+    private static Object convertToParameterType(Class<?> type, String value) {
+        if (type == String.class) {
+            return value;
+        } else if (type == int.class || type == Integer.class) {
+            return Integer.parseInt(value);
+        } else if (type == long.class || type == Long.class) {
+            return Long.parseLong(value);
+        } else if (type == double.class || type == Double.class) {
+            return Double.parseDouble(value);
+        } else if (type == boolean.class || type == Boolean.class) {
+            return Boolean.parseBoolean(value);
+        }
+        // Add more type conversions as needed
+        throw new IllegalArgumentException("Unsupported parameter type: " + type.getName());
+    }
+    
 
     public static void processMethodResult(Object result, PrintWriter out, HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (result instanceof String) {
@@ -128,7 +179,7 @@ public class Utils {
     public static void handleModelView(ModelView modelView, HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String url = modelView.getUrl();
         if (url == null) {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND, "La vue spécifiée est introuvable");
+            response.sendError(HttpServletResponse.SC_NOT_FOUND, "La vue specifiee est introuvable");
             return;
         }
         modelView.getData().forEach(request::setAttribute);
