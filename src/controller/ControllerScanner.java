@@ -3,6 +3,7 @@ package controller;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -29,8 +30,9 @@ public class ControllerScanner {
         } else {
             while (resources.hasMoreElements()) {
                 URL resource = resources.nextElement();
-                System.out.println("Found resource: " + resource.getFile()); // Debug
-                controllers.addAll(findClasses(new File(resource.getFile()), packageName));
+                String decodedPath = URLDecoder.decode(resource.getFile(), "UTF-8");
+                System.out.println("Found resource: " + decodedPath); // Debug
+                controllers.addAll(findClasses(new File(decodedPath), packageName));
             }
         }
 
