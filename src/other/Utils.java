@@ -12,12 +12,16 @@ import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import annotation.ModelField;
+import annotation.ModelParam;
+import java.lang.reflect.Field;
 
 import annotation.Get;
 import annotation.Param;
 
 public class Utils {
 
+    
     public static String initializeControllerPackage(ServletConfig config) 
         throws ServletException {
         String controllerPackage = config.getInitParameter("base_package");
@@ -114,7 +118,7 @@ public class Utils {
         }
     }
 
-    public static Object executeControllerMethod(Mapping mapping, HttpServletRequest request) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    public static Object executeControllerMethod(Mapping mapping, HttpServletRequest request) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException ,ServletException{
         Class<?> cls = Class.forName(mapping.getClassName());
         Method method = findMethodWithRequestParams(cls, mapping.getMethodName());
         Object obj = cls.getConstructor().newInstance();
@@ -132,22 +136,55 @@ public class Utils {
         throw new NoSuchMethodException("Method " + methodName + " not found in class " + cls.getName());
     }
 
-    private static Object[] getMethodParams(Method method, HttpServletRequest request) {
-        Parameter[] parameters = method.getParameters();
-        Object[] paramValues = new Object[parameters.length];
+   public static Object[] getMethodParams(Method method, HttpServletRequest request) 
+        throws ServletException {
+    Parameter[] parameters = method.getParameters();
+    Object[] paramValues = new Object[parameters.length];
 
-        for (int i = 0; i < parameters.length; i++) {
-            Param param = parameters[i].getAnnotation(Param.class);
-            if (param != null) {
-                String paramName = param.name();
-                String paramValue = request.getParameter(paramName);
-                paramValues[i] = convertToParameterType(parameters[i].getType(), paramValue);
+    for (int i = 0; i < parameters.length; i++) {
+        Param param = parameters[i].getAnnotation(Param.class);
+        ModelParam modelParam = parameters[i].getAnnotation(ModelParam.class);
+
+        if (param != null) {
+            String paramName = param.name();
+            String paramValue = request.getParameter(paramName);
+            paramValues[i] = convertToParameterType(parameters[i].getType(), paramValue);
+            
+        } else if (modelParam != null) {
+            Class<?> paramType = parameters[i].getType();
+            Object paramInstance;
+                try {
+                    paramInstance = paramType.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new ServletException("Unable to instantiate parameter: " + paramType.getName(), e);
+                }
+                populateModelFields(paramInstance, request , modelParam.name());
+                paramValues[i] = paramInstance;
+            } else {
+                throw new ServletException("Cannot find param or modelParam annotation for parameter: " + parameters[i].getName());
             }
         }
 
         return paramValues;
     }
 
+    private static void populateModelFields( Object instance, HttpServletRequest request , String nameModelAttribute ) throws ServletException {
+        Field[] fields = instance.getClass().getDeclaredFields();
+        for (Field field : fields) {
+            ModelField modelField = field.getAnnotation(ModelField.class);
+            String paramName = (modelField != null && !modelField.name().isEmpty()) ? modelField.name() : field.getName();
+            String paramValue = request.getParameter(nameModelAttribute+"."+paramName);
+            if (paramValue != null) {
+                field.setAccessible(true);
+                try {
+                    field.set(instance, convertToParameterType(field.getType(), paramValue));
+                } catch (IllegalAccessException e) {
+                    throw new ServletException("Unable to set field value: " + field.getName(), e);
+                }
+            }
+        }
+    }
+    
     private static Object convertToParameterType(Class<?> type, String value) {
         if (type == String.class) {
             return value;
@@ -164,7 +201,6 @@ public class Utils {
         throw new IllegalArgumentException("Unsupported parameter type: " + type.getName());
     }
     
-
     public static void processMethodResult(Object result, PrintWriter out, HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (result instanceof String) {
             out.println("<p>Result: " + result + "</p>");
