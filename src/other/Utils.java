@@ -113,11 +113,18 @@ public class Utils {
             Object result = executeControllerMethod(mapping, request);
             processMethodResult(result, out, request, response);
         } catch (Exception e) {
-            out.println("<p>Error invoking method: " + e.getMessage() + "</p>");
+            // Log the error
             e.printStackTrace();
+            
+            // Set the error message as a request attribute
+            // request.setAttribute("errorMessage", e.getMessage());
+    
+            // // Forward the request to the error page
+            // RequestDispatcher dispatcher = request.getRequestDispatcher("/2772.jsp");
+            // dispatcher.forward(request, response);
         }
     }
-
+    
     public static Object executeControllerMethod(Mapping mapping, HttpServletRequest request) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException ,ServletException{
         Class<?> cls = Class.forName(mapping.getClassName());
         Method method = findMethodWithRequestParams(cls, mapping.getMethodName());
@@ -136,39 +143,57 @@ public class Utils {
         throw new NoSuchMethodException("Method " + methodName + " not found in class " + cls.getName());
     }
 
-   public static Object[] getMethodParams(Method method, HttpServletRequest request) 
-        throws ServletException {
-    Parameter[] parameters = method.getParameters();
-    Object[] paramValues = new Object[parameters.length];
+    public static Object[] getMethodParams(Method method, HttpServletRequest request)
+    throws ServletException {
+        Parameter[] parameters = method.getParameters();
+        Object[] paramValues = new Object[parameters.length];
 
-    for (int i = 0; i < parameters.length; i++) {
-        Param param = parameters[i].getAnnotation(Param.class);
-        ModelParam modelParam = parameters[i].getAnnotation(ModelParam.class);
+        for (int i = 0; i < parameters.length; i++) {
+            Param param = parameters[i].getAnnotation(Param.class);
+            ModelParam modelParam = parameters[i].getAnnotation(ModelParam.class);
 
-        if (param != null) {
-            String paramName = param.name();
-            String paramValue = request.getParameter(paramName);
-            paramValues[i] = convertToParameterType(parameters[i].getType(), paramValue);
-            
-        } else if (modelParam != null) {
-            Class<?> paramType = parameters[i].getType();
-            Object paramInstance;
+            // Annotation : PARAM
+            if (param != null) {
+                String paramName = param.name();
+                if (paramName == null || paramName.isEmpty() ) {
+                    paramName = parameters[i].getName(); 
+                }
+                String paramValue = request.getParameter(paramName);
+                paramValues[i] = convertToParameterType(parameters[i].getType(), paramValue);
+
+            // Annotation : MODELPARAM
+            } else if (modelParam != null) {
+                Class<?> paramType = parameters[i].getType();
+                Object paramInstance;
                 try {
                     paramInstance = paramType.getDeclaredConstructor().newInstance();
                 } catch (Exception e) {
                     throw new ServletException("Unable to instantiate parameter: " + paramType.getName(), e);
                 }
-                populateModelFields(paramInstance, request , modelParam.name());
+
+                String attributeName = modelParam.name();
+                if (attributeName == null || attributeName.isEmpty()) {
+                    attributeName = parameters[i].getName();
+                }
+
+                populateModelFields(paramInstance, request, attributeName);
+                System.out.println("Nom attribute : " + attributeName);
+
                 paramValues[i] = paramInstance;
+
+            // Annotation : MYSESSION
+            } else if (parameters[i].getType().equals(MySession.class)) {
+                paramValues[i] = new MySession(request.getSession());
+                
             } else {
-                throw new ServletException("Cannot find param or modelParam annotation for parameter: " + parameters[i].getName());
+                // throw new ServletException(" ETU 002772 ; Nom de l'erreur :  "+" Cannot find param or modelParam annotation for parameter: " + parameters[i].getName());
             }
         }
 
         return paramValues;
     }
 
-    private static void populateModelFields( Object instance, HttpServletRequest request , String nameModelAttribute ) throws ServletException {
+   private static void populateModelFields( Object instance, HttpServletRequest request , String nameModelAttribute ) throws ServletException {
         Field[] fields = instance.getClass().getDeclaredFields();
         for (Field field : fields) {
             ModelField modelField = field.getAnnotation(ModelField.class);
