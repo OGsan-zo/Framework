@@ -44,6 +44,7 @@ public class Utils {
                 continue;
             }
             
+            // Boucle des methodes du controlleurs 
             Method[] methods = controller.getDeclaredMethods();
             if (methods == null) {
                 continue;
@@ -92,7 +93,6 @@ public class Utils {
     }
 
     public static void displayFormData(PrintWriter out, HashMap<String, String> formData) {
-        out.println("<hr><h2>Form Data</h2>");
         formData.forEach((key, value) -> out.println("<p>" + key + ": " + value + "</p>"));
     }
 
@@ -110,7 +110,13 @@ public class Utils {
 
     public static void invokeMethod(Mapping mapping, PrintWriter out, HttpServletRequest request, HttpServletResponse response, HashMap<String, String> formData) throws ServletException, IOException {
         try {
-            Object result = executeControllerMethod(mapping, request);
+            Class<?> controllerClass = Class.forName(mapping.getClassName());
+            Object controllerInstance = controllerClass.getConstructor().newInstance();
+            
+            // Initialize MySession attributes
+            initializeMySessionAttributes(controllerInstance, request);
+            
+            Object result = executeControllerMethod(mapping, request, controllerInstance);
             processMethodResult(result, out, request, response);
         } catch (Exception e) {
             // Log the error
@@ -118,21 +124,20 @@ public class Utils {
             
             // Set the error message as a request attribute
             // request.setAttribute("errorMessage", e.getMessage());
-    
-            // // Forward the request to the error page
+        
+            // Forward the request to the error page
             // RequestDispatcher dispatcher = request.getRequestDispatcher("/2772.jsp");
             // dispatcher.forward(request, response);
         }
     }
     
-    public static Object executeControllerMethod(Mapping mapping, HttpServletRequest request) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException ,ServletException{
-        Class<?> cls = Class.forName(mapping.getClassName());
+    public static Object executeControllerMethod(Mapping mapping, HttpServletRequest request, Object controllerInstance) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException ,ServletException{
+        Class<?> cls = controllerInstance.getClass();
         Method method = findMethodWithRequestParams(cls, mapping.getMethodName());
-        Object obj = cls.getConstructor().newInstance();
         Object[] params = getMethodParams(method, request);
-        return method.invoke(obj, params);
+        return method.invoke(controllerInstance, params);
     }
-
+    
     private static Method findMethodWithRequestParams(Class<?> cls, String methodName) throws NoSuchMethodException {
         Method[] methods = cls.getDeclaredMethods();
         for (Method method : methods) {
@@ -144,7 +149,7 @@ public class Utils {
     }
 
     public static Object[] getMethodParams(Method method, HttpServletRequest request)
-    throws ServletException {
+        throws ServletException {
         Parameter[] parameters = method.getParameters();
         Object[] paramValues = new Object[parameters.length];
 
@@ -176,6 +181,7 @@ public class Utils {
                     attributeName = parameters[i].getName();
                 }
 
+                // Parametre OBJECT : execution
                 populateModelFields(paramInstance, request, attributeName);
                 System.out.println("Nom attribute : " + attributeName);
 
@@ -193,7 +199,7 @@ public class Utils {
         return paramValues;
     }
 
-   private static void populateModelFields( Object instance, HttpServletRequest request , String nameModelAttribute ) throws ServletException {
+    private static void populateModelFields( Object instance, HttpServletRequest request , String nameModelAttribute ) throws ServletException {
         Field[] fields = instance.getClass().getDeclaredFields();
         for (Field field : fields) {
             ModelField modelField = field.getAnnotation(ModelField.class);
@@ -269,4 +275,15 @@ public class Utils {
         });
         return formData;
     }
+
+    public static void initializeMySessionAttributes(Object controllerInstance, HttpServletRequest request) throws IllegalAccessException {
+        Field[] fields = controllerInstance.getClass().getDeclaredFields();
+        for (Field field : fields) {
+            if (field.getType().equals(MySession.class)) {
+                field.setAccessible(true);
+                field.set(controllerInstance, new MySession(request.getSession()));
+            }
+        }
+    }
+
 }
