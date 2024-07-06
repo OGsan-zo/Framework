@@ -71,3 +71,11 @@
         - Gerer les parametres entrant avec l'annotation @Param 
         - Traitement des types de parametre string 
         - renvoie vers une vue 
+
+- Sprint 7 : 
+    - Utilisation d'un objet comme parametre de entrant avec l'annotation @ModelParam 
+    - Similaire au sprint 6 
+
+- Sprint 8 : 
+    - Gestion et utilisation de session 
+    - Creation , ajout d'objet , et suppression de la session
