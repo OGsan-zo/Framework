@@ -41,7 +41,6 @@ public class FrontController extends HttpServlet {
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
-        response.setContentType("text/html");
         PrintWriter out = response.getWriter();
         try {
             // Récupérer les paramètres du formulaire
