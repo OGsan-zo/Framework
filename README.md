@@ -65,17 +65,17 @@
         - REQUEST :
             - Type de retour : afficher que le type de retour est introuvable 
             - Erreur 404 si on ne trouve pas de page lier a la methode placer par l'utilisateur 
-    
+
 - Sprint 6 : 
-    - Gestion formulaire : 
-        - Gerer les parametres entrant avec l'annotation @Param 
-        - Traitement des types de parametre string 
-        - renvoie vers une vue 
+    - Gestion des Parametres pour formulaire : 
+        - Annotation des parametres entrant de type de base avec @Param 
+        
 
-- Sprint 7 : 
-    - Utilisation d'un objet comme parametre de entrant avec l'annotation @ModelParam 
-    - Similaire au sprint 6 
-
-- Sprint 8 : 
-    - Gestion et utilisation de session 
-    - Creation , ajout d'objet , et suppression de la session
+- Sprint 9 : 
+    - RESTAPI : 
+        - Creation annotation RestApi 
+        - Transformation en JSON du resultat attendue 
+        
+- Sprint 10 : 
+    - Ajout annotation URL : 
+    - Verification des methodes et d'utilisation des annotations 

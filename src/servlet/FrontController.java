@@ -30,17 +30,25 @@ public class FrontController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
-        processRequest(request, response);
+        try {
+            processRequest(request, response);
+        } catch (NoSuchMethodException | ClassNotFoundException | IOException | ServletException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        processRequest(request, response);
+        try {
+            processRequest(request, response);
+        } catch (NoSuchMethodException | ClassNotFoundException | IOException | ServletException e) {
+            e.printStackTrace();
+        }
     }
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
-            throws IOException, ServletException {
+            throws IOException, ServletException, NoSuchMethodException, ClassNotFoundException {
         PrintWriter out = response.getWriter();
         try {
             // Récupérer les paramètres du formulaire
