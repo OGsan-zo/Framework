@@ -8,8 +8,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 
-import annotation.MyAnnotation;
-
+import annotation.Controller;
 public class ControllerScanner {
 
     public List<Class<?>> findControllers(String packageName) throws ClassNotFoundException, IOException {
@@ -57,7 +56,7 @@ public class ControllerScanner {
                 classes.addAll(findClasses(file, packageName + "." + file.getName()));
             } else if (file.getName().endsWith(".class")) {
                 Class<?> clazz = Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6));
-                if (clazz.isAnnotationPresent(MyAnnotation.class)) {
+                if (clazz.isAnnotationPresent(Controller.class)) {
                     classes.add(clazz);
                     System.out.println("Found annotated class: " + clazz.getName()); // Debug
                 }
