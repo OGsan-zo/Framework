@@ -7,20 +7,29 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import com.google.gson.Gson;
 import annotation.*;
+import annotation.field.ModelField;
+import annotation.methods.Get;
+import annotation.methods.Post;
+import annotation.methods.RestApi;
+import annotation.methods.Url;
 
 public class Utils {
 
     // Initialize controller base package from web.xml
-    public static String initializeControllerPackage(ServletConfig config) throws ServletException {
+    public static String initializeControllerPackage(ServletConfig config) 
+        throws ServletException 
+    {
         String controllerPackage = config.getInitParameter("base_package");
-        if (controllerPackage == null) {
-            throw new ServletException("Base package is not specified in web.xml");
-        }
+        
+        if (controllerPackage == null) 
+        {    throw new ServletException("Base package is not specified in web.xml");    }
+        
         return controllerPackage;
     }
 
-    // Validate uniqueness of URL mapping across all controllers
-    public static void validateUniqueMappingValues(List<Class<?>> controllers) throws ServletException {
+    public static void validateUniqueMappingValues(List<Class<?>> controllers) 
+        throws ServletException 
+    {
         if (controllers == null) throw new ServletException("The controllers list is null");
         HashMap<String, String> urlMethodMap = new HashMap<>();
 
@@ -35,43 +44,53 @@ public class Utils {
         }
     }
 
-    // Helper method to validate URL uniqueness
-    private static void validateUrlUniqueness(String url, HashMap<String, String> urlMethodMap, Class<?> controller, Method method) throws ServletException {
+    private static void validateUrlUniqueness( String url, HashMap<String, String> urlMethodMap,
+                                                            Class<?> controller, Method method ) 
+        throws ServletException 
+    {
         if (url == null) throw new ServletException("URL mapping value is null for method: " + method.getName());
+
         if (urlMethodMap.containsKey(url)) {
             String existingMethod = urlMethodMap.get(url);
             throw new ServletException(String.format("Duplicate mapping value '%s' found. URL already exists for method: %s and method: %s.", url, existingMethod, method.getName()));
         }
+
         urlMethodMap.put(url, controller.getName() + "." + method.getName());
     }
 
-    // Get relative URI
     public static String getRelativeURI(HttpServletRequest request) {
         return request.getRequestURI().substring(request.getContextPath().length());
     }
 
-    // Display debug information
     public static void displayDebugInfo(PrintWriter out, String relativeURI, HashMap<String, Mapping> methodList) {
-        out.println("<h1>Debug Information</h1>");
+        out.println("<h1>FrameWork : </h1>");
         out.println("<h2>Requested URL: " + relativeURI + "</h2>");
-        methodList.forEach((key, mapping) -> out.println("Mapping - Path: " + key + ", Class: " + mapping.getClassName() + ", Method: " + mapping.getMethodName() + "<br>"));
+        methodList.forEach((key, mapping) -> {
+            for (VerbAction verbAction : mapping.getVerbMethodes()) {
+                out.println("Mapping - Path: " + key + "|           Class: " + mapping.getClassName() +
+                    ",              Method: " + verbAction.getMethode() + "<br>");
+            }
+        });
     }
 
-    // Display form data
     public static void displayFormData(PrintWriter out, HashMap<String, String> formData) {
         formData.forEach((key, value) -> out.println("<p>" + key + ": " + value + "</p>"));
     }
 
-    // Execute a mapping method (Main execution logic)
-    public static void executeMappingMethod(String relativeURI, HashMap<String, Mapping> methodList, PrintWriter out, HttpServletRequest request, HttpServletResponse response, HashMap<String, String> formData) throws ServletException, IOException, NoSuchMethodException, ClassNotFoundException {
+    public static void executeMappingMethod(String relativeURI, 
+                                            HashMap<String, Mapping> methodList,
+                                            PrintWriter out, HttpServletRequest request, 
+                                            HttpServletResponse response, HashMap<String, 
+                                            String> formData) 
+        throws ServletException, IOException, NoSuchMethodException, ClassNotFoundException 
+    {
         Mapping mapping = methodList.get(relativeURI);
-        if (mapping == null) {
-            throw new ServletException("No associated method found for URL: " + relativeURI);
-        }
-        Method method = findMethod(Class.forName(mapping.getClassName()), mapping.getMethodName());
-
-        if (!isHttpMethodValid(method, request.getMethod())) {
-            handleError("HTTP method " + request.getMethod() + " is not allowed for this endpoint.", request, response);
+        
+        if (mapping == null) 
+        {    throw new ServletException("No associated method found for URL: " + relativeURI);      }
+        
+        if (!isHttpMethodValid(mapping, request.getMethod())) {
+            handleError("<h1>400</h1>  HTTP method " + request.getMethod() + " is not allowed for this endpoint.", request, response);
             return;
         }
 
@@ -79,38 +98,57 @@ public class Utils {
         invokeMethod(mapping, out, request, response, formData);
     }
 
-    // Find a method in a given class by name
-    private static Method findMethod(Class<?> clazz, String methodName) throws NoSuchMethodException {
+    private static Method findMethod(Class<?> clazz, String methodName) 
+        throws NoSuchMethodException 
+    {
         for (Method method : clazz.getDeclaredMethods()) {
             if (method.getName().equals(methodName)) return method;
         }
+
         throw new NoSuchMethodException("Method " + methodName + " not found in class " + clazz.getName());
     }
 
-    // Invoke a method using reflection
-    public static void invokeMethod(Mapping mapping, PrintWriter out, HttpServletRequest request, HttpServletResponse response, HashMap<String, String> formData) throws ServletException, IOException {
+    public static void invokeMethod(Mapping mapping, PrintWriter out, 
+                                    HttpServletRequest request, HttpServletResponse response, 
+                                    HashMap<String, String> formData) 
+        throws ServletException, IOException 
+    {
         try {
             Class<?> controllerClass = Class.forName(mapping.getClassName());
             Object controllerInstance = controllerClass.getConstructor().newInstance();
             initializeMySessionAttributes(controllerInstance, request);
 
             Object result = executeControllerMethod(mapping, request, controllerInstance, response);
-            processMethodResult(result, findMethod(controllerClass, mapping.getMethodName()), out, request, response);
-        } catch (Exception e) {
+            for (VerbAction verbAction : mapping.getVerbMethodes()) {
+                processMethodResult(result, findMethod(controllerClass, verbAction.getMethode()), out, request, response);
+            }
+            
+    } catch (Exception e) {
             e.printStackTrace();
             handleError("Error invoking method: " + e.getMessage(), request, response);
         }
     }
 
-    // Execute a controller method with parameters
-    public static Object executeControllerMethod(Mapping mapping, HttpServletRequest request, Object controllerInstance, HttpServletResponse response) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException, ServletException {
-        Method method = findMethod(controllerInstance.getClass(), mapping.getMethodName());
-        Object[] params = getMethodParams(method, request);
-        return method.invoke(controllerInstance, params);
+    public static Object executeControllerMethod(Mapping mapping, HttpServletRequest request, 
+                                                    Object controllerInstance, HttpServletResponse response) 
+        throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException, ServletException 
+    {
+        Object obj = new Object(); 
+
+        for (VerbAction verbAction : mapping.getVerbMethodes()) {
+            Method method = findMethod(controllerInstance.getClass(), verbAction.getMethode());
+            Object[] params = getMethodParams(method, request);
+            obj = method.invoke(controllerInstance, params);
+        }
+        
+        return obj;
+        
     }
 
     // Get method parameters from the request
-    public static Object[] getMethodParams(Method method, HttpServletRequest request) throws ServletException {
+    public static Object[] getMethodParams(Method method, HttpServletRequest request) 
+        throws ServletException 
+    {
         Parameter[] parameters = method.getParameters();
         Object[] paramValues = new Object[parameters.length];
 
@@ -123,8 +161,10 @@ public class Utils {
         return paramValues;
     }
 
-    // Resolve a method parameter value
-    private static Object resolveParameterValue(Parameter parameter, Param param, ModelParam modelParam, HttpServletRequest request) throws ServletException {
+    private static Object resolveParameterValue(Parameter parameter, Param param, 
+                                                ModelParam modelParam, HttpServletRequest request) 
+        throws ServletException 
+    {
         if (param != null) {
             String paramName = param.name().isEmpty() ? parameter.getName() : param.name();
             return convertToParameterType(parameter.getType(), request.getParameter(paramName));
@@ -138,40 +178,44 @@ public class Utils {
         return null;
     }
 
-    // Resolve model parameter (populate object fields)
-    private static Object resolveModelParam(Parameter parameter, ModelParam modelParam, HttpServletRequest request) throws ServletException {
+    private static Object resolveModelParam(Parameter parameter, ModelParam modelParam, 
+                                            HttpServletRequest request) 
+        throws ServletException 
+    {
         try {
             Object paramInstance = parameter.getType().getDeclaredConstructor().newInstance();
             populateModelFields(paramInstance, request, modelParam.name());
             return paramInstance;
-        } catch (Exception e) {
-            throw new ServletException("Unable to instantiate parameter: " + parameter.getType().getName(), e);
-        }
+        } 
+        catch (Exception e) 
+        {    throw new ServletException("Unable to instantiate parameter: " + parameter.getType().getName(), e);    }
     }
 
-    // Populate object fields from request parameters
-    private static void populateModelFields(Object instance, HttpServletRequest request, String attributeName) throws ServletException {
+    private static void populateModelFields(Object instance, HttpServletRequest request, String attributeName) 
+        throws ServletException 
+    {
         for (Field field : instance.getClass().getDeclaredFields()) {
             ModelField modelField = field.getAnnotation(ModelField.class);
             String paramName = (modelField != null && !modelField.name().isEmpty()) ? modelField.name() : field.getName();
             String paramValue = request.getParameter(attributeName + "." + paramName);
-            if (paramValue != null) {
-                setFieldValue(instance, field, paramValue);
-            }
+            
+            if (paramValue != null) 
+            {    setFieldValue(instance, field, paramValue);    }
         }
     }
 
-    // Set a field value using reflection
-    private static void setFieldValue(Object instance, Field field, String value) throws ServletException {
+    private static void setFieldValue(Object instance, Field field, String value) 
+        throws ServletException 
+    {
         try {
             field.setAccessible(true);
             field.set(instance, convertToParameterType(field.getType(), value));
-        } catch (IllegalAccessException e) {
-            throw new ServletException("Unable to set field value: " + field.getName(), e);
-        }
+        } 
+        
+        catch (IllegalAccessException e) 
+        {    throw new ServletException("Unable to set field value: " + field.getName(), e);    }
     }
 
-    // Convert a string to the correct parameter type
     private static Object convertToParameterType(Class<?> type, String value) {
         if (value == null || value.isEmpty()) return getDefaultParameterValue(type);
         if (type == String.class) return value;
@@ -182,7 +226,6 @@ public class Utils {
         throw new IllegalArgumentException("Unsupported parameter type: " + type.getName());
     }
 
-    // Return default parameter values for various types
     private static String getDefaultParameterValue(Class<?> type) {
         if (type.equals(String.class)) return "";
         if (type.equals(int.class) || type.equals(Integer.class)) return "0";
@@ -192,25 +235,19 @@ public class Utils {
         return null;
     }
 
-    // Check if the HTTP method is valid for the requested method
-    private static boolean isHttpMethodValid(Method method, String requestMethod) {
-        // Vérifie si la méthode a l'annotation @Get
-        if (method.isAnnotationPresent(Get.class)) {
-            return requestMethod.equalsIgnoreCase("GET");
+    private static boolean isHttpMethodValid(Mapping mapping, String requestMethod) {
+        for (VerbAction verbAction : mapping.getVerbMethodes()) {
+            String mappedVerb = verbAction.getVerbe();
+            if (mappedVerb.equalsIgnoreCase(requestMethod)) {
+                return true;
+            }
         }
-        
-        // Vérifie si la méthode a l'annotation @Post
-        if (method.isAnnotationPresent(Post.class)) {
-            return requestMethod.equalsIgnoreCase("POST");
-        }
-        
-        // Si aucune annotation, on accepte la méthode par défaut (GET)
-        return requestMethod.equalsIgnoreCase("GET");
+        return false;
     }
 
-
-    // Initialize session attributes (MySession)
-    public static void initializeMySessionAttributes(Object controllerInstance, HttpServletRequest request) throws IllegalAccessException {
+    public static void initializeMySessionAttributes(Object controllerInstance, HttpServletRequest request) 
+        throws IllegalAccessException 
+    {
         for (Field field : controllerInstance.getClass().getDeclaredFields()) {
             if (field.getType().equals(MySession.class)) {
                 field.setAccessible(true);
@@ -219,50 +256,57 @@ public class Utils {
         }
     }
 
-    // Process the result of a method execution
-    public static void processMethodResult(Object result, Method method, PrintWriter out, HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (result == null) {
-            out.println("<p>Method executed, no result to display.</p>");
-            return;
-        }
+    public static void processMethodResult(Object result, Method method, 
+                                            PrintWriter out, HttpServletRequest request, 
+                                            HttpServletResponse response) 
+        throws ServletException, IOException 
+    {
+        if (result == null) 
+        {    out.println("<p>Method executed, no result to display.</p>");   return;    }
 
         out.println("<p>Method result:</p>");
-        if (result instanceof ModelView) {
-            handleModelView((ModelView) result, request, response);
-        } else if (method.isAnnotationPresent(RestApi.class)) {
+        
+        if (result instanceof ModelView) 
+        {    handleModelView((ModelView) result, request, response);     }
+
+        else if (method.isAnnotationPresent(RestApi.class)) 
+        {
             response.setContentType("application/json");
             Gson gson = new Gson();
             out.println(gson.toJson(result));
-        } else {
-            out.println(result.toString());
-        }
+        } 
+
+        else 
+        {    out.println(result.toString());   }
     }
 
     // Handle a ModelView result (Forward to JSP)
-    public static void handleModelView(ModelView modelView, HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    public static void handleModelView(ModelView modelView, HttpServletRequest request, 
+                                        HttpServletResponse response) 
+        throws ServletException, IOException 
+    {
         modelView.getData().forEach(request::setAttribute);
         request.getRequestDispatcher("/" + modelView.getUrl()).forward(request, response);
     }
 
     // Handle errors (forward to error page)
-    public static void handleError(String errorMessage, HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    public static void handleError(String errorMessage, HttpServletRequest request, 
+                                    HttpServletResponse response) 
+        throws ServletException, IOException 
+    {
         request.setAttribute("errorMessage", errorMessage);
         request.getRequestDispatcher("/error.jsp").forward(request, response);
     }
 
-    public static void findMethodsAnnotated(Class<?> controllerClass, HashMap<String, Mapping> methodList) {
-        Method[] methods = controllerClass.getDeclaredMethods();
-        
-        for (Method method : methods) {
-            if (method.isAnnotationPresent(Url.class)) {
-                Url urlAnnotation = method.getAnnotation(Url.class);
-                String url = urlAnnotation.value();
-                
-                // Stocker la méthode dans la liste des mappings
-                Mapping mapping = new Mapping(method.getName(), controllerClass.getName());
-                methodList.put(url, mapping);
-            }
-        }
+    public static String setVerbString( Method method ) {
+
+        if (method.isAnnotationPresent(Get.class)) 
+        {    return "get";      } 
+        else if (method.isAnnotationPresent(Post.class)) 
+        {    return "post";     }
+
+        // Si aucune annotation n'est trouvée, get automatique    
+        return "get";
     }
 
     public static HashMap<String, String> getFormParameters(HttpServletRequest request) {
@@ -271,12 +315,51 @@ public class Utils {
         // Récupérer tous les paramètres du formulaire
         request.getParameterMap().forEach((key, values) -> {
             if (values.length > 0) {
-                formData.put(key, values[0]); // Assigner la première valeur du tableau
+                formData.put(key, values[0]);
             }
         });
         
         return formData;
     }
     
+    public static void findMethodsAnnotated(Class<?> controllerClass, HashMap<String, Mapping> methodList) {
+        Method[] methods = controllerClass.getDeclaredMethods();
     
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(Url.class)) {
+                Url urlAnnotation = method.getAnnotation(Url.class);
+                String url = urlAnnotation.value();
+    
+                // Vérifier le verbe HTTP
+                String verb = setVerbString(method);
+                
+                // Créer le mapping à ajouter
+                Mapping mapping = new Mapping(controllerClass.getName(), new VerbAction(verb, method.getName()));
+    
+                // Vérifier si l'URL existe déjà dans le methodList avec la même action (GET/POST)
+                if (!isMappingDuplicate(methodList, url, verb)) {
+                    methodList.put(url, mapping);
+                } 
+                else 
+                {    System.out.println("Duplicate method found for URL: " + url + " with HTTP verb: " + verb);     }
+            }
+        }
+    }
+    
+    // Vérifier si l'URL et l'action (GET/POST) existent déjà dans le methodList
+    public static boolean isMappingDuplicate(HashMap<String, Mapping> methodList, String url, String verb) {
+        Mapping existingMapping = methodList.get(url);
+        if (existingMapping != null) {
+            // Parcourir tous les VerbActions dans le mapping existant
+            for (VerbAction verbAction : existingMapping.getVerbMethodes()) {
+                // Vérifier si le verbe existe déjà
+                if (verbAction.getVerbe().equalsIgnoreCase(verb)) {
+                    return true; // Duplication trouvée
+                }
+            }
+        }
+        return false;
+    }
+    
+
 }
