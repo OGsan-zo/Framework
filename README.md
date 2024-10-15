@@ -78,4 +78,7 @@
         
 - Sprint 10 : 
     - Ajout annotation URL : 
-    - Verification des methodes et d'utilisation des annotations 
+    - Verification des methodes et d'utilisation des annotations
+ 
+- Sprint 11 :
+      - Gestion et apparition des erreurs 
