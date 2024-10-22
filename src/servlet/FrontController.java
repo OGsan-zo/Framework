@@ -12,7 +12,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import controller.*;
 import other.*;
+import jakarta.servlet.annotation.MultipartConfig;
 
+@MultipartConfig
 public class FrontController extends HttpServlet {
 
     private String controllerPackage;

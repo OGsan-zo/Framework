@@ -6,6 +6,9 @@ import java.util.*;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import com.google.gson.Gson;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import annotation.*;
 import annotation.field.ModelField;
 import annotation.methods.Get;
@@ -14,6 +17,8 @@ import annotation.methods.RestApi;
 import annotation.methods.Url;
 
 public class Utils {
+    static String pathDestinationFile = "C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps\\Test\\assets\\file";  
+
 
     // Initialize controller base package from web.xml
     public static String initializeControllerPackage(ServletConfig config) 
@@ -78,16 +83,24 @@ public class Utils {
     }
 
     public static void executeMappingMethod(String relativeURI, 
-                                            HashMap<String, Mapping> methodList,
-                                            PrintWriter out, HttpServletRequest request, 
-                                            HttpServletResponse response, HashMap<String, 
-                                            String> formData) 
-        throws ServletException, IOException, NoSuchMethodException, ClassNotFoundException 
+                                        HashMap<String, Mapping> methodList,
+                                        PrintWriter out, HttpServletRequest request, 
+                                        HttpServletResponse response, HashMap<String, 
+                                        String> formData) 
+    throws ServletException, IOException, NoSuchMethodException, ClassNotFoundException 
     {
+        if (relativeURI == null || relativeURI.trim().isEmpty()) {
+            out.println("<h1>Welcome to the Home Page!</h1>");
+            return;
+        }
+        
         Mapping mapping = methodList.get(relativeURI);
         
-        if (mapping == null) 
-        {    throw new ServletException("No associated method found for URL: " + relativeURI);      }
+        if (mapping == null) {
+            // Si aucun mapping trouvé, renvoyer une erreur 404
+            handleError404(request, response);
+            return;
+        }
         
         if (!isHttpMethodValid(mapping, request.getMethod())) {
             handleError("<h1>400</h1>  HTTP method " + request.getMethod() + " is not allowed for this endpoint.", request, response);
@@ -147,7 +160,7 @@ public class Utils {
 
     // Get method parameters from the request
     public static Object[] getMethodParams(Method method, HttpServletRequest request) 
-        throws ServletException 
+        throws ServletException, IOException 
     {
         Parameter[] parameters = method.getParameters();
         Object[] paramValues = new Object[parameters.length];
@@ -155,11 +168,29 @@ public class Utils {
         for (int i = 0; i < parameters.length; i++) {
             Param param = parameters[i].getAnnotation(Param.class);
             ModelParam modelParam = parameters[i].getAnnotation(ModelParam.class);
-            paramValues[i] = resolveParameterValue(parameters[i], param, modelParam, request);
+
+            if (parameters[i].getType().equals(FileUpload.class)) {
+                // Récupérer le fichier
+                Part filePart = request.getPart(param.name());
+                String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+                InputStream fileContent = filePart.getInputStream();
+
+                // Convertir en byte[]
+                byte[] fileData = new byte[fileContent.available()];
+                fileContent.read(fileData);
+
+                // Créer une instance de FileUpload
+                FileUpload fileUpload = new FileUpload(fileName, pathDestinationFile , fileData);
+                paramValues[i] = fileUpload;
+            } else {
+                // Gérer les autres types de paramètres
+                paramValues[i] = resolveParameterValue(parameters[i], param, modelParam, request);
+            }
         }
 
         return paramValues;
     }
+
 
     private static Object resolveParameterValue(Parameter parameter, Param param, 
                                                 ModelParam modelParam, HttpServletRequest request) 
@@ -184,7 +215,14 @@ public class Utils {
     {
         try {
             Object paramInstance = parameter.getType().getDeclaredConstructor().newInstance();
-            populateModelFields(paramInstance, request, modelParam.name());
+
+            // Check l'argument de MODELPARAM 
+            String attributeName = modelParam.name();
+            if (attributeName == null || attributeName.isEmpty()) {
+                attributeName = parameter.getName();
+            }
+
+            populateModelFields(paramInstance, request, attributeName);
             return paramInstance;
         } 
         catch (Exception e) 
@@ -197,12 +235,43 @@ public class Utils {
         for (Field field : instance.getClass().getDeclaredFields()) {
             ModelField modelField = field.getAnnotation(ModelField.class);
             String paramName = (modelField != null && !modelField.name().isEmpty()) ? modelField.name() : field.getName();
-            String paramValue = request.getParameter(attributeName + "." + paramName);
             
-            if (paramValue != null) 
-            {    setFieldValue(instance, field, paramValue);    }
+            // Gérer le type FileUpload
+            if (field.getType().equals(FileUpload.class)) {
+                Part filePart;
+                try {
+                    // Récupérer le fichier depuis la requête
+                    filePart = request.getPart(attributeName + "." + paramName);
+                    
+                    if (filePart != null && filePart.getSize() > 0) {
+                        // Lire le contenu du fichier
+                        InputStream fileContent = filePart.getInputStream();
+                        String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+                        
+                        // Convertir en byte[]
+                        byte[] fileData = new byte[fileContent.available()];
+                        fileContent.read(fileData);
+                        
+                        // Créer une instance de FileUpload et l'assigner au champ
+                        FileUpload fileUpload = new FileUpload(fileName, Utils.pathDestinationFile, fileData);
+                        field.setAccessible(true);
+                        field.set(instance, fileUpload);
+                    }
+                } catch (IOException | ServletException e) {
+                    throw new ServletException("Erreur lors du traitement du fichier : " + e.getMessage(), e);
+                } catch (IllegalAccessException e) {
+                    throw new ServletException("Impossible d'assigner le champ FileUpload : " + e.getMessage(), e);
+                }
+            } else {
+                // Gérer les types de paramètres normaux
+                String paramValue = request.getParameter(attributeName + "." + paramName);
+                if (paramValue != null) {
+                    setFieldValue(instance, field, paramValue);
+                }
+            }
         }
     }
+
 
     private static void setFieldValue(Object instance, Field field, String value) 
         throws ServletException 
@@ -295,7 +364,20 @@ public class Utils {
         throws ServletException, IOException 
     {
         request.setAttribute("errorMessage", errorMessage);
-        request.getRequestDispatcher("/error.jsp").forward(request, response);
+        response.getWriter().println(errorMessage);
+        // request.getRequestDispatcher("/error.jsp").forward(request, response);
+    }
+
+    // Méthode pour gérer l'erreur 404
+    public static void handleError404(HttpServletRequest request ,HttpServletResponse response) 
+        throws ServletException, IOException 
+    {
+        response.setStatus(HttpServletResponse.SC_NOT_FOUND); // Réponse HTTP 404
+        response.getWriter().println("<h1>404 - Page Not Found</h1>");
+        response.getWriter().println("<p>The requested URL was not found on this server.</p>");
+
+        // Vous pouvez aussi rediriger vers une page dédiée comme :
+        // request.getRequestDispatcher("/error404.jsp").forward(request, response);
     }
 
     public static String setVerbString( Method method ) {
