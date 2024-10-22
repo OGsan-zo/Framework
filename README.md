@@ -83,5 +83,6 @@
 - Sprint 11 :
       - Gestion et apparition des erreurs
 
-- Sprint 12 : 
+- Sprint 12 :
+    - Ajout class FileUpload
     - Ajout d'upload fichier 
