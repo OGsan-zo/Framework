@@ -81,7 +81,7 @@
     - Verification des methodes et d'utilisation des annotations
  
 - Sprint 11 :
-      - Gestion et apparition des erreurs
+    - Gestion et apparition des erreurs
 
 - Sprint 12 :
     - Ajout class FileUpload
