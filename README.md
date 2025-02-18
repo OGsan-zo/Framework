@@ -8,11 +8,17 @@
 
 - Annoter : 
     - vos Models par l'annotation :  @Controller 
-    - vos methodes par l'annotation : @Get 
+    - vos methodes par l'annotation : @Url , @Get , @Post
+    - vos argumens de fonction par :
+        - @ModelParam (pour vos classes personnels)
+        - @Param (pour les types de base : int , String, ...)
 
 - Type de retour fonctionnel : 
     - STRING 
     - MODELVIEW 
+
+- Ajouter FileUpload pour ajouter un fichier a votre classe 
+
 
 ## ETAPES SPRINT : 
 - Sprint 0 : 
@@ -81,4 +87,8 @@
     - Verification des methodes et d'utilisation des annotations
  
 - Sprint 11 :
-      - Gestion et apparition des erreurs 
+    - Gestion et apparition des erreurs
+
+- Sprint 12 :
+    - Ajout class FileUpload
+    - Ajout d'upload fichier 
