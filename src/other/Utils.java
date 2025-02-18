@@ -15,6 +15,7 @@ import annotation.methods.Get;
 import annotation.methods.Post;
 import annotation.methods.RestApi;
 import annotation.methods.Url;
+import exception.*;
 
 public class Utils {
     static String pathDestinationFile = "C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps\\Test\\assets\\file";  
@@ -87,7 +88,7 @@ public class Utils {
                                         PrintWriter out, HttpServletRequest request, 
                                         HttpServletResponse response, HashMap<String, 
                                         String> formData) 
-    throws ServletException, IOException, NoSuchMethodException, ClassNotFoundException 
+    throws ServletException, IOException, NoSuchMethodException, ClassNotFoundException, ValidationException 
     {
         if (relativeURI == null || relativeURI.trim().isEmpty()) {
             out.println("<h1>Welcome to the Home Page!</h1>");
@@ -124,7 +125,7 @@ public class Utils {
     public static void invokeMethod(Mapping mapping, PrintWriter out, 
                                     HttpServletRequest request, HttpServletResponse response, 
                                     HashMap<String, String> formData) 
-        throws ServletException, IOException 
+        throws ServletException, IOException, ValidationException 
     {
         try {
             Class<?> controllerClass = Class.forName(mapping.getClassName());
@@ -136,17 +137,26 @@ public class Utils {
                 processMethodResult(result, findMethod(controllerClass, verbAction.getMethode()), out, request, response);
             }
             
-    } catch (Exception e) {
+        } catch (Exception e) {
+            
+            if (e instanceof ValidationException) throw (ValidationException) e;
+
+            System.out.println(e.getMessage() + "Suite de probleme" );
             e.printStackTrace();
+            
             handleError("Error invoking method: " + e.getMessage(), request, response);
         }
+
+        
+        // Throw encore l'exception du bas 
     }
 
     public static Object executeControllerMethod(Mapping mapping, HttpServletRequest request, 
-                                                    Object controllerInstance, HttpServletResponse response) 
-        throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException, ServletException 
+                                                Object controllerInstance, HttpServletResponse response) 
+        throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, IOException, ServletException, ValidationException 
     {
         Object obj = new Object(); 
+        ValidateForm checkers = new ValidateForm();
 
         for (VerbAction verbAction : mapping.getVerbMethodes()) {
             Method method = findMethod(controllerInstance.getClass(), verbAction.getMethode());
@@ -156,11 +166,13 @@ public class Utils {
         
         return obj;
         
+        
+        // Throw encore l'exception du bas 
     }
 
     // Get method parameters from the request
     public static Object[] getMethodParams(Method method, HttpServletRequest request) 
-        throws ServletException, IOException 
+        throws ServletException, IOException, ValidationException 
     {
         Parameter[] parameters = method.getParameters();
         Object[] paramValues = new Object[parameters.length];
@@ -182,19 +194,24 @@ public class Utils {
                 // Créer une instance de FileUpload
                 FileUpload fileUpload = new FileUpload(fileName, pathDestinationFile , fileData);
                 paramValues[i] = fileUpload;
-            } else {
+            } 
+            
+            else {
                 // Gérer les autres types de paramètres
                 paramValues[i] = resolveParameterValue(parameters[i], param, modelParam, request);
             }
         }
 
         return paramValues;
+
+        
+        // Throw encore l'exception du bas 
     }
 
 
     private static Object resolveParameterValue(Parameter parameter, Param param, 
                                                 ModelParam modelParam, HttpServletRequest request) 
-        throws ServletException 
+        throws ServletException, ValidationException 
     {
         if (param != null) {
             String paramName = param.name().isEmpty() ? parameter.getName() : param.name();
@@ -207,31 +224,53 @@ public class Utils {
             return new MySession(request.getSession());
         }
         return null;
+
     }
 
-    private static Object resolveModelParam(Parameter parameter, ModelParam modelParam, 
-                                            HttpServletRequest request) 
-        throws ServletException 
+    private static Object resolveModelParam(Parameter parameter, ModelParam modelParam, HttpServletRequest request) 
+    throws ServletException, ValidationException 
     {
         try {
             Object paramInstance = parameter.getType().getDeclaredConstructor().newInstance();
 
-            // Check l'argument de MODELPARAM 
             String attributeName = modelParam.name();
             if (attributeName == null || attributeName.isEmpty()) {
                 attributeName = parameter.getName();
             }
 
             populateModelFields(paramInstance, request, attributeName);
+            
+            ValidateForm validator = new ValidateForm();
+            ValidationError validationError = validator.validateObject(paramInstance);
+            
+            if (validationError.hasErrors()) {
+                ValidationException ve = new ValidationException();
+                validationError.getFieldErrors().forEach((field, error) -> 
+                    ve.addError(field + ": " + error)
+                );
+                
+                ModelView errorView = new ModelView();
+                errorView.setUrl("sprint14.jsp");
+                errorView.setValidationError(validationError);
+                
+                ve.setModelView(errorView);
+                
+                throw ve;
+            }
+            
             return paramInstance;
         } 
-        catch (Exception e) 
-        {    throw new ServletException("Unable to instantiate parameter: " + parameter.getType().getName(), e);    }
+        catch (Exception e) {
+            e.printStackTrace();
+            if (e instanceof ValidationException) throw (ValidationException) e;
+            throw new ServletException("Unable to instantiate parameter: " + parameter.getType().getName(), e);
+        }
     }
-
+    
     private static void populateModelFields(Object instance, HttpServletRequest request, String attributeName) 
         throws ServletException 
     {
+        
         for (Field field : instance.getClass().getDeclaredFields()) {
             ModelField modelField = field.getAnnotation(ModelField.class);
             String paramName = (modelField != null && !modelField.name().isEmpty()) ? modelField.name() : field.getName();
@@ -257,6 +296,7 @@ public class Utils {
                         field.setAccessible(true);
                         field.set(instance, fileUpload);
                     }
+
                 } catch (IOException | ServletException e) {
                     throw new ServletException("Erreur lors du traitement du fichier : " + e.getMessage(), e);
                 } catch (IllegalAccessException e) {
@@ -265,6 +305,7 @@ public class Utils {
             } else {
                 // Gérer les types de paramètres normaux
                 String paramValue = request.getParameter(attributeName + "." + paramName);
+
                 if (paramValue != null) {
                     setFieldValue(instance, field, paramValue);
                 }
@@ -272,12 +313,14 @@ public class Utils {
         }
     }
 
-
+    
     private static void setFieldValue(Object instance, Field field, String value) 
         throws ServletException 
     {
         try {
             field.setAccessible(true);
+            // IF misy erreur ao @ lay verification de valeur
+            // De tsy manao set
             field.set(instance, convertToParameterType(field.getType(), value));
         } 
         
@@ -419,9 +462,9 @@ public class Utils {
                 Mapping mapping = new Mapping(controllerClass.getName(), new VerbAction(verb, method.getName()));
     
                 // Vérifier si l'URL existe déjà dans le methodList avec la même action (GET/POST)
-                if (!isMappingDuplicate(methodList, url, verb)) {
-                    methodList.put(url, mapping);
-                } 
+                if (!isMappingDuplicate(methodList, url, verb)) 
+                {    methodList.put(url, mapping);    } 
+
                 else 
                 {    System.out.println("Duplicate method found for URL: " + url + " with HTTP verb: " + verb);     }
             }
