@@ -112,7 +112,7 @@ public class Utils {
         invokeMethod(mapping, out, request, response, formData);
     }
 
-    private static Method findMethod(Class<?> clazz, String methodName) 
+    public static Method findMethod(Class<?> clazz, String methodName) 
         throws NoSuchMethodException 
     {
         for (Method method : clazz.getDeclaredMethods()) {
