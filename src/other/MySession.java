@@ -3,7 +3,6 @@ package other;
 import jakarta.servlet.http.HttpSession;
 
 public class MySession {
-    
     private HttpSession session;
 
     public MySession(){}
@@ -13,17 +12,18 @@ public class MySession {
     }
 
     public Object get(String key) {
-        System.out.println("Valeur obtenue :" +session.getAttribute(key) );
-        return session.getAttribute(key);
+        Object value = session.getAttribute(key);
+        System.out.println("Session GET - Key: " + key + ", Value: " + value);
+        return value;
     }
 
     public void add(String key, Object object) {
-        System.out.println("Ajouter dans la session");
+        System.out.println("Session ADD - Key: " + key + ", Value: " + object);
         session.setAttribute(key, object);
     }
 
     public void delete(String key) {
-        System.out.println("Deconnexion de la session" + key );
+        System.out.println("Session DELETE - Key: " + key);
         session.removeAttribute(key);
     }
 }
