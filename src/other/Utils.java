@@ -228,40 +228,58 @@ public class Utils {
     }
 
     private static Object resolveModelParam(Parameter parameter, ModelParam modelParam, HttpServletRequest request) 
-    throws ServletException, ValidationException 
+        throws ServletException, ValidationException 
     {
         try {
+            // Instanciation de l'objet
             Object paramInstance = parameter.getType().getDeclaredConstructor().newInstance();
 
+            // Gestion du nom d'attribut
             String attributeName = modelParam.name();
             if (attributeName == null || attributeName.isEmpty()) {
                 attributeName = parameter.getName();
             }
 
+            // Population des champs
             populateModelFields(paramInstance, request, attributeName);
             
-            ValidateForm validator = new ValidateForm();
-            ValidationError validationError = validator.validateObject(paramInstance);
+            // Obtention de l'URL de redirection depuis l'annotation
+            String redirectUrl = modelParam.redirectOnError();
+            if (redirectUrl == null || redirectUrl.isEmpty()) {
+                throw new ServletException("redirectOnError must be specified in @ModelParam annotation");
+            }
             
-            if (validationError.hasErrors()) {
-                ValidationException ve = new ValidationException();
-                validationError.getFieldErrors().forEach((field, error) -> 
-                    ve.addError(field + ": " + error)
-                );
-                
+            try {
+                // Validation
+                ValidateForm validator = new ValidateForm();
+                validator.validateObject(paramInstance);
+                return paramInstance;
+            } catch (ValidationException ve) {
+                // Configuration de la ModelView pour la redirection
                 ModelView errorView = new ModelView();
-                errorView.setUrl("sprint14.jsp");
-                errorView.setValidationError(validationError);
+                errorView.setUrl(redirectUrl);
                 
+                // On utilise directement getValidationErrors() pour récupérer les erreurs
+                errorView.add("fieldErrors", ve.getValidationErrors());
+                
+                // Pour les valeurs des champs, on doit les récupérer à partir de l'objet
+                Map<String, String> fieldValues = new HashMap<>();
+                for (Field field : paramInstance.getClass().getDeclaredFields()) {
+                    field.setAccessible(true);
+                    Object value = field.get(paramInstance);
+                    if (value != null) {
+                        fieldValues.put(field.getName(), value.toString());
+                    }
+                }
+                errorView.add("fieldValues", fieldValues);
+                
+                // Configuration de l'exception
                 ve.setModelView(errorView);
+                ve.setRedirectUrl(redirectUrl);
                 
                 throw ve;
             }
-            
-            return paramInstance;
-        } 
-        catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception e) {
             if (e instanceof ValidationException) throw (ValidationException) e;
             throw new ServletException("Unable to instantiate parameter: " + parameter.getType().getName(), e);
         }

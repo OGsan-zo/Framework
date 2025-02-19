@@ -1,50 +1,48 @@
 package exception;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import other.ModelView;
 
 public class ValidationException extends Exception {
-    private List<String> errors;
     private ModelView modelView;
-
-    public ValidationException(ModelView errorView) {
-        super();
-        this.errors = new ArrayList<>();
-        this.modelView = errorView;
-    }
-
+    private Map<String, String> validationErrors;
+    private String redirectUrl;
+    
     public ValidationException() {
-        this.errors = new ArrayList<>();
-        this.modelView = new ModelView();
+        this.validationErrors = new HashMap<>();
     }
-
-    public void addError(String error) {
-        this.errors.add(error);
+    
+    public void setRedirectUrl(String url) {
+        this.redirectUrl = url;
     }
-
-    public List<String> getErrors() {
-        return errors;
+    
+    public String getRedirectUrl() {
+        return this.redirectUrl;
     }
-
-    public boolean hasErrors() {
-        return !errors.isEmpty();
+    
+    public void addError(String field, String message) {
+        this.validationErrors.put(field, message);
+    }
+    
+    public Map<String, String> getValidationErrors() {
+        return this.validationErrors;
+    }
+    
+    public void setModelView(ModelView modelView) {
+        this.modelView = modelView;
+    }
+    
+    public ModelView getModelView() {
+        return this.modelView;
     }
 
     @Override
     public String getMessage() {
         StringBuilder message = new StringBuilder("Validation errors:\n");
-        for (String error : errors) {
-            message.append("- ").append(error).append("\n");
-        }
+        validationErrors.forEach((field, error) -> {
+            message.append("- ").append(field).append(": ").append(error).append("\n");
+        });
         return message.toString();
-    }
-
-    public ModelView getModelView() {
-        return modelView;
-    }
-
-    public void setModelView(ModelView modelView) {
-        this.modelView = modelView;
     }
 }

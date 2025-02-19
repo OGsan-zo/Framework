@@ -10,4 +10,5 @@ import java.lang.annotation.Target;
 
 public @interface ModelParam {
     String name(); 
+    String redirectOnError() default "";
 }
