@@ -96,27 +96,60 @@ public class Utils {
     }
 
     public static void displayControllerList(PrintWriter out, HashMap<String, Mapping> methodList) {
-        out.println("<html><head><title>Framework Controllers</title></head><body>");
-        out.println("<h1>Liste des contrôleurs disponibles :</h1>");
-        out.println("<ul>");
-        
-        methodList.forEach((url, mapping) -> {
-            out.println("<li><strong>URL:</strong> " + url);
-            out.println("<ul>");
-            out.println("<li><strong>Classe:</strong> " + mapping.getClassName() + "</li>");
-            out.println("<li><strong>Méthodes:</strong>");
-            out.println("<ul>");
-            
-            for (VerbAction verbAction : mapping.getVerbMethodes()) {
-                out.println("<li>" + verbAction.getVerbe().toUpperCase() + ": " + 
-                            verbAction.getMethode() + "</li>");
-            }
-            
-            out.println("</ul></li></ul></li>");
+        out.println("<!DOCTYPE html>");
+        out.println("<html>");
+        out.println("<head>");
+        out.println("    <title>Framework Controllers</title>");
+        out.println("    <style>");
+        out.println("        body { font-family: Arial, sans-serif; margin: 20px; }");
+        out.println("        h1 { color: #2c3e50; }");
+        out.println("        .controller-block { background: #f8f9fa; border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 20px; }");
+        out.println("        .url { font-weight: bold; color: #e74c3c; }");
+        out.println("        .method { margin-left: 20px; }");
+        out.println("        .verb { display: inline-block; width: 60px; font-weight: bold; }");
+        out.println("        .verb.get { color: #27ae60; }");
+        out.println("        .verb.post { color: #e67e22; }");
+        out.println("    </style>");
+        out.println("</head>");
+        out.println("<body>");
+        out.println("<h1>Liste des contrôleurs disponibles</h1>");
+
+        // Organiser par classe contrôleur
+        Map<String, List<Map.Entry<String, Mapping>>> controllers = new HashMap<>();
+        methodList.entrySet().forEach(entry -> {
+            String className = entry.getValue().getClassName();
+            controllers.computeIfAbsent(className, k -> new ArrayList<>()).add(entry);
         });
-        
-        out.println("</ul>");
-        out.println("</body></html>");
+
+        controllers.forEach((className, entries) -> {
+            out.println("<div class='controller-block'>");
+            out.println("    <h2>Classe: " + className + "</h2>");
+            
+            entries.forEach(entry -> {
+                String url = entry.getKey();
+                Mapping mapping = entry.getValue();
+                
+                out.println("    <div>");
+                out.println("        <p><span class='url'>URL: " + url + "</span></p>");
+                out.println("        <div class='method'>");
+                out.println("            <p>Méthodes:</p>");
+                out.println("            <ul>");
+                
+                for (VerbAction verbAction : mapping.getVerbMethodes()) {
+                    out.println("                <li><span class='verb " + verbAction.getVerbe().toLowerCase() + "'>" + 
+                            verbAction.getVerbe().toUpperCase() + "</span>: " + verbAction.getMethode() + "</li>");
+                }
+                
+                out.println("            </ul>");
+                out.println("        </div>");
+                out.println("    </div>");
+            });
+            
+            out.println("</div>");
+        });
+
+        out.println("</body>");
+        out.println("</html>");
     }
 
     public static void displayFormData(PrintWriter out, HashMap<String, String> formData) {
@@ -139,7 +172,11 @@ public class Utils {
         }
         
         if (!isHttpMethodValid(mapping, request.getMethod())) {
-            handleError("<h1>400</h1>  HTTP method " + request.getMethod() + " is not allowed for this endpoint.", request, response);
+             handleError(request, response, 
+                HttpServletResponse.SC_BAD_REQUEST,
+                "Méthode non autorisée",
+                "HTTP method " + request.getMethod() + " is not allowed for this endpoint",
+                null);
             return;
         }
 
@@ -179,7 +216,12 @@ public class Utils {
             System.out.println(e.getMessage() + " Suite de probleme" );
             e.printStackTrace();
             
-            handleError("Error invoking method: " + e.getMessage(), request, response);
+            handleError(request, response,
+                HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                "Erreur d'exécution",
+                "Error invoking method: " + e.getMessage(),
+                e);
+                
         }
     }
 
@@ -447,22 +489,111 @@ public class Utils {
     }
 
     // Handle errors (forward to error page)
-    public static void handleError(String errorMessage, HttpServletRequest request, 
-                                    HttpServletResponse response) 
-        throws ServletException, IOException 
-    {
+    public static void handleError(HttpServletRequest request, HttpServletResponse response, 
+                                int statusCode, String errorTitle, String errorMessage, 
+                                Throwable exception) throws ServletException, IOException {
+        response.setStatus(statusCode);
+        request.setAttribute("errorTitle", errorTitle);
         request.setAttribute("errorMessage", errorMessage);
-        response.getWriter().println(errorMessage);
-        // request.getRequestDispatcher("/error.jsp").forward(request, response);
+        request.setAttribute("exception", exception);
+        request.setAttribute("stackTrace", getStackTrace(exception));
+        request.setAttribute("requestDetails", getRequestDetails(request));
+        
+        // Vous pouvez créer un fichier error.jsp ou utiliser cette version HTML de base
+        PrintWriter out = response.getWriter();
+        displayErrorPage(out, statusCode, errorTitle, errorMessage, exception, request);
     }
+
+    private static String getStackTrace(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
+    }
+
+    private static Map<String, String> getRequestDetails(HttpServletRequest request) {
+        Map<String, String> details = new HashMap<>();
+        details.put("Method", request.getMethod());
+        details.put("URI", request.getRequestURI());
+        details.put("Query String", request.getQueryString());
+        details.put("Remote Address", request.getRemoteAddr());
+        return details;
+    }
+
+    public static void displayErrorPage(PrintWriter out, int statusCode, String errorTitle, 
+                                    String errorMessage, Throwable exception, 
+                                    HttpServletRequest request) {
+        out.println("<!DOCTYPE html>");
+        out.println("<html>");
+        out.println("<head>");
+        out.println("    <title>Erreur " + statusCode + " - " + errorTitle + "</title>");
+        out.println("    <style>");
+        out.println("        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f8f9fa; }");
+        out.println("        .error-container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }");
+        out.println("        h1 { color: #dc3545; }");
+        out.println("        .error-section { margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; }");
+        out.println("        .error-section h2 { margin-top: 0; color: #6c757d; }");
+        out.println("        pre { background: #2d2d2d; color: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }");
+        out.println("        .request-details { display: grid; grid-template-columns: 150px 1fr; gap: 10px; }");
+        out.println("    </style>");
+        out.println("</head>");
+        out.println("<body>");
+        out.println("    <div class='error-container'>");
+        out.println("        <h1>" + statusCode + " - " + errorTitle + "</h1>");
+        out.println("        <p>" + errorMessage + "</p>");
+        
+        out.println("        <div class='error-section'>");
+        out.println("            <h2>Détails de la requête</h2>");
+        out.println("            <div class='request-details'>");
+        out.println("                <div><strong>URL:</strong></div>");
+        out.println("                <div>" + request.getRequestURL() + "</div>");
+        out.println("                <div><strong>Méthode:</strong></div>");
+        out.println("                <div>" + request.getMethod() + "</div>");
+        out.println("                <div><strong>Adresse IP:</strong></div>");
+        out.println("                <div>" + request.getRemoteAddr() + "</div>");
+        out.println("            </div>");
+        out.println("        </div>");
+        
+        if (exception != null) {
+            out.println("        <div class='error-section'>");
+            out.println("            <h2>Détails de l'erreur</h2>");
+            out.println("            <p><strong>Type:</strong> " + exception.getClass().getName() + "</p>");
+            out.println("            <p><strong>Message:</strong> " + exception.getMessage() + "</p>");
+            out.println("        </div>");
+            
+            out.println("        <div class='error-section'>");
+            out.println("            <h2>Stack Trace</h2>");
+            out.println("            <pre>" + getStackTrace(exception) + "</pre>");
+            out.println("        </div>");
+        }
+        
+        out.println("    </div>");
+        out.println("</body>");
+        out.println("</html>");
+    }
+
+    public static void logError(Throwable exception, HttpServletRequest request) {
+        System.err.println("=== ERROR LOG ===");
+        System.err.println("Timestamp: " + new Date());
+        System.err.println("Request URL: " + request.getRequestURL());
+        System.err.println("Method: " + request.getMethod());
+        System.err.println("Error: " + exception.getClass().getName());
+        System.err.println("Message: " + exception.getMessage());
+        System.err.println("Stack Trace:");
+        exception.printStackTrace();
+        System.err.println("=== END ERROR LOG ===");
+    }
+
 
     // Méthode pour gérer l'erreur 404
     public static void handleError404(HttpServletRequest request ,HttpServletResponse response) 
         throws ServletException, IOException 
     {
-        response.setStatus(HttpServletResponse.SC_NOT_FOUND); // Réponse HTTP 404
-        response.getWriter().println("<h1>404 - Page Not Found</h1>");
-        response.getWriter().println("<p>The requested URL was not found on this server.</p>");
+        handleError(request, response,
+            HttpServletResponse.SC_NOT_FOUND,
+            "Page non trouvée",
+            "The requested URL was not found on this server",
+            null);
     }
 
     public static String setVerbString( Method method ) {

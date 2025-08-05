@@ -57,55 +57,89 @@ public class FrontController extends HttpServlet {
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
     throws IOException, ServletException, NoSuchMethodException, ClassNotFoundException {
         response.setContentType("text/html;charset=UTF-8");
-        PrintWriter out = response.getWriter();
-
+        
         try {
             HashMap<String, String> formData = Utils.getFormParameters(request);
             String relativeURI = Utils.getRelativeURI(request);
             
-            // Gestion spéciale pour la racine
             if (relativeURI.equals("") || relativeURI.equals("/")) {
-                Utils.displayControllerList(out, methodList);
+                Utils.displayControllerList(response.getWriter(), methodList);
                 return;
             }
 
-            // Récupérer la méthode à exécuter
             Mapping mapping = methodList.get(relativeURI);
             
-            if (mapping != null) {
-                // Vérification d'authentification
-                try {
-                    Class<?> controllerClass = Class.forName(mapping.getClassName());
-                    Method method = null;
-                    String httpMethod = request.getMethod();
-                    
-                    for (VerbAction verbAction : mapping.getVerbMethodes()) {
-                        if (verbAction.getVerbe().equalsIgnoreCase(httpMethod)) {
-                            method = Utils.findMethod(controllerClass, verbAction.getMethode());
-                            break;
-                        }
+            if (mapping == null) {
+                Utils.handleError(request, response, 
+                    HttpServletResponse.SC_NOT_FOUND, 
+                    "Page non trouvée", 
+                    "Aucun mapping trouvé pour l'URL: " + relativeURI, 
+                    null);
+                return;
+            }
+            
+            if (!isHttpMethodValid(mapping, request.getMethod())) {
+                Utils.handleError(request, response, 
+                    HttpServletResponse.SC_METHOD_NOT_ALLOWED, 
+                    "Méthode non autorisée", 
+                    "La méthode " + request.getMethod() + " n'est pas autorisée pour cette URL", 
+                    null);
+                return;
+            }
+
+            try {
+                Class<?> controllerClass = Class.forName(mapping.getClassName());
+                Method method = null;
+                String httpMethod = request.getMethod();
+                
+                for (VerbAction verbAction : mapping.getVerbMethodes()) {
+                    if (verbAction.getVerbe().equalsIgnoreCase(httpMethod)) {
+                        method = Utils.findMethod(controllerClass, verbAction.getMethode());
+                        break;
                     }
-                    
-                    if (method != null) {
-                        AuthenticationInterceptor.validateAuthentication(method, controllerClass, request);
-                    }
-                } catch (AuthenticationException e) {
-                    request.getSession().setAttribute("requested_url", relativeURI);
-                    response.sendRedirect(request.getContextPath() + "/login-page");
-                    return;
                 }
                 
-                // Exécution normale
-                Utils.executeMappingMethod(relativeURI, methodList, out, request, response, formData);
-            } else {
-                Utils.handleError404(request, response);
+                if (method != null) {
+                    AuthenticationInterceptor.validateAuthentication(method, controllerClass, request);
+                }
+                
+                Utils.executeMappingMethod(relativeURI, methodList, response.getWriter(), request, response, formData);
+                
+            } catch (AuthenticationException e) {
+                request.getSession().setAttribute("requested_url", relativeURI);
+                response.sendRedirect(request.getContextPath() + "/login-page");
+                
+            } catch (ValidationException ve) {
+                Utils.handleError(request, response, 
+                    HttpServletResponse.SC_BAD_REQUEST, 
+                    "Erreur de validation", 
+                    ve.getMessage(), 
+                    ve);
+                
+            } catch (Exception e) {
+                Utils.handleError(request, response, 
+                    HttpServletResponse.SC_INTERNAL_SERVER_ERROR, 
+                    "Erreur interne du serveur", 
+                    "Une erreur inattendue s'est produite lors du traitement de votre requête", 
+                    e);
             }
-        } catch (ValidationException ve) {
-            ModelView errorView = ve.getModelView();
-            Utils.handleModelView(errorView, request, response);
-        } finally {
-            out.close();
+            
+        } catch (Exception e) {
+            Utils.handleError(request, response, 
+                HttpServletResponse.SC_INTERNAL_SERVER_ERROR, 
+                "Erreur critique", 
+                "Une erreur critique s'est produite lors du traitement de votre requête", 
+                e);
         }
+    }
+
+    private boolean isHttpMethodValid(Mapping mapping, String requestMethod) {
+        for (VerbAction verbAction : mapping.getVerbMethodes()) {
+            if (verbAction.getVerbe().equalsIgnoreCase(requestMethod)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
