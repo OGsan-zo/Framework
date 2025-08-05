@@ -1,0 +1,92 @@
+# Fichiers générés par l'IDE/éditeur
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# Fichiers de dépendances (Node, Python, etc.)
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Fichiers de compilation et binaires
+*.class
+*.exe
+*.out
+*.dll
+*.so
+*.dylib
+*.o
+*.obj
+*.a
+*.lib
+*.jar
+*.war
+*.ear
+*.bin
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Fichiers de logs et bases de données
+*.log
+*.sql
+*.sqlite
+*.db
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers d'environnement
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.venv
+
+# Fichiers de couverture et tests
+coverage/
+*.lcov
+.nyc_output/
+
+# Fichiers de sortie (build, dist, etc.)
+build/
+dist/
+out/
+*.msi
+*.app
+*.dmg
+
+# Fichiers spécifiques à certains frameworks
+.next/
+.nuxt/
+.cache/
+.serverless/
+.jekyll-cache/
+
+# Autres
+*.bak
+*.tmp
+*.temp
+*.pid
+*.pid.lock
+
+# Mes fichiers
+bin/
+lib/
+Conception/ 
+Compile/
+TODO/
