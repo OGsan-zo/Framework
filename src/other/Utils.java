@@ -9,6 +9,13 @@ import com.google.gson.Gson;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.text.SimpleDateFormat;
+import java.text.ParseException;
 import annotation.*;
 import annotation.field.ModelField;
 import annotation.methods.Get;
@@ -411,28 +418,157 @@ public class Utils {
 
     private static Object convertToParameterType(Class<?> type, String value) {
         if (value == null || value.trim().isEmpty()) {
-            return getDefaultParameterValue(type); // Retourne null pour Integer, pas "0"
+            return getDefaultParameterValue(type);
         }
+        
+        String trimmedValue = value.trim();
+        
         try {
-            if (type == String.class) return value;
-            if (type == int.class || type == Integer.class) return Integer.parseInt(value.trim());
-            if (type == long.class || type == Long.class) return Long.parseLong(value.trim());
-            if (type == double.class || type == Double.class) return Double.parseDouble(value.trim());
-            if (type == boolean.class || type == Boolean.class) return Boolean.parseBoolean(value.trim());
-            throw new IllegalArgumentException("Unsupported parameter type: " + type.getName());
+            // Types existants
+            if (type == String.class) return trimmedValue;
+            if (type == int.class || type == Integer.class) return Integer.parseInt(trimmedValue);
+            if (type == long.class || type == Long.class) return Long.parseLong(trimmedValue);
+            if (type == double.class || type == Double.class) return Double.parseDouble(trimmedValue);
+            if (type == boolean.class || type == Boolean.class) return Boolean.parseBoolean(trimmedValue);
+            
+            // Types numériques étendus
+            if (type == float.class || type == Float.class) return Float.parseFloat(trimmedValue);
+            if (type == short.class || type == Short.class) return Short.parseShort(trimmedValue);
+            if (type == byte.class || type == Byte.class) return Byte.parseByte(trimmedValue);
+            
+            // BigDecimal pour les calculs précis
+            if (type == BigDecimal.class) {
+                return new BigDecimal(trimmedValue);
+            }
+            
+            // Gestion des dates Java 8+
+            if (type == LocalDate.class) {
+                return parseLocalDate(trimmedValue);
+            }
+            
+            if (type == LocalDateTime.class) {
+                return parseLocalDateTime(trimmedValue);
+            }
+            
+            // Gestion des dates classiques
+            if (type == Date.class) {
+                return parseDate(trimmedValue);
+            }
+            
+            // Gestion des énumérations
+            if (type.isEnum()) {
+                return parseEnum(type, trimmedValue);
+            }
+            
+            throw new IllegalArgumentException("Type non supporté: " + type.getName());
+            
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Valeur invalide pour le type " + type.getSimpleName() + ": " + value, e);
+            throw new IllegalArgumentException("Valeur numérique invalide pour le type " + type.getSimpleName() + ": " + trimmedValue, e);
+        } catch (DateTimeParseException | ParseException e) {
+            throw new IllegalArgumentException("Format de date invalide pour le type " + type.getSimpleName() + ": " + trimmedValue, e);
         }
     }
 
+
     private static Object getDefaultParameterValue(Class<?> type) {
-        if (type.equals(String.class)) return null; // ou "" si vous préférez
-        if (type.equals(int.class) || type.equals(Integer.class)) return null; // ou 0 si vous voulez une valeur par défaut
-        if (type.equals(long.class) || type.equals(Long.class)) return null; // ou 0L
-        if (type.equals(double.class) || type.equals(Double.class)) return null; // ou 0.0
-        if (type.equals(boolean.class) || type.equals(Boolean.class)) return null; // ou false
+        if (type.equals(String.class)) return null;
+        if (type.equals(int.class) || type.equals(Integer.class)) return null;
+        if (type.equals(long.class) || type.equals(Long.class)) return null;
+        if (type.equals(double.class) || type.equals(Double.class)) return null;
+        if (type.equals(float.class) || type.equals(Float.class)) return null;
+        if (type.equals(short.class) || type.equals(Short.class)) return null;
+        if (type.equals(byte.class) || type.equals(Byte.class)) return null;
+        if (type.equals(boolean.class) || type.equals(Boolean.class)) return null;
+        if (type.equals(BigDecimal.class)) return null;
+        if (type.equals(LocalDate.class)) return null;
+        if (type.equals(LocalDateTime.class)) return null;
+        if (type.equals(Date.class)) return null;
+        if (type.isEnum()) return null;
         return null;
     }
+
+    private static LocalDate parseLocalDate(String value) {
+        // Essayer plusieurs formats couramment utilisés
+        String[] patterns = {
+            "yyyy-MM-dd",      // Format HTML5 date input
+            "dd/MM/yyyy",      // Format français
+            "MM/dd/yyyy",      // Format américain
+            "dd-MM-yyyy"       // Format avec tirets
+        };
+        
+        for (String pattern : patterns) {
+            try {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+                return LocalDate.parse(value, formatter);
+            } catch (DateTimeParseException e) {
+                // Continuer avec le format suivant
+            }
+        }
+        
+        throw new DateTimeParseException("Impossible de parser la date: " + value, value, 0);
+    }
+
+    private static LocalDateTime parseLocalDateTime(String value) {
+        // Essayer plusieurs formats couramment utilisés
+        String[] patterns = {
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd HH:mm",
+            "dd/MM/yyyy HH:mm:ss",
+            "dd/MM/yyyy HH:mm",
+            "yyyy-MM-ddTHH:mm:ss",  // Format ISO
+            "yyyy-MM-ddTHH:mm"
+        };
+        
+        for (String pattern : patterns) {
+            try {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+                return LocalDateTime.parse(value, formatter);
+            } catch (DateTimeParseException e) {
+                // Continuer avec le format suivant
+            }
+        }
+        
+        throw new DateTimeParseException("Impossible de parser la date/heure: " + value, value, 0);
+    }
+
+    private static Date parseDate(String value) throws ParseException {
+        // Essayer plusieurs formats couramment utilisés
+        String[] patterns = {
+            "yyyy-MM-dd",
+            "dd/MM/yyyy",
+            "MM/dd/yyyy",
+            "dd-MM-yyyy",
+            "yyyy-MM-dd HH:mm:ss",
+            "dd/MM/yyyy HH:mm:ss"
+        };
+        
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat formatter = new SimpleDateFormat(pattern);
+                formatter.setLenient(false); // Mode strict
+                return formatter.parse(value);
+            } catch (ParseException e) {
+                // Continuer avec le format suivant
+            }
+        }
+        
+        throw new ParseException("Impossible de parser la date: " + value, 0);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Enum<T>> T parseEnum(Class<?> enumType, String value) {
+        try {
+            return Enum.valueOf((Class<T>) enumType, value.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            // Essayer aussi avec la casse exacte
+            try {
+                return Enum.valueOf((Class<T>) enumType, value);
+            } catch (IllegalArgumentException e2) {
+                throw new IllegalArgumentException("Valeur d'énumération invalide '" + value + "' pour le type " + enumType.getSimpleName());
+            }
+        }
+    }
+
 
     private static boolean isHttpMethodValid(Mapping mapping, String requestMethod) {
         for (VerbAction verbAction : mapping.getVerbMethodes()) {
