@@ -13,6 +13,8 @@ public class ModelView {
     private ValidationError validationError;
     private boolean hasErrors;
 
+    private boolean redirect = false; // Nouveau champ
+
     public ModelView() {
         this.data = new HashMap<>();
     }
@@ -43,6 +45,14 @@ public class ModelView {
 
     public boolean hasErrors() {
         return hasErrors;
+    }
+
+     public boolean isRedirect() {
+        return redirect;
+    }
+
+    public void setRedirect(boolean redirect) {
+        this.redirect = redirect;
     }
 
     public static void main(String[] args) {

@@ -465,8 +465,23 @@ public class Utils {
 
         out.println("<p>Method result:</p>");
         
-        if (result instanceof ModelView) 
-        {    handleModelView((ModelView) result, request, response);     }
+        if (result instanceof ModelView) {
+            ModelView modelView = (ModelView) result;
+            if (modelView.isRedirect()) {
+                // Gestion des messages flash avant redirection
+                if (!modelView.getData().isEmpty()) {
+                    HttpSession session = request.getSession();
+                    session.setAttribute("flashData", modelView.getData());
+                }
+                // Effectuer une redirection HTTP
+                response.sendRedirect(request.getContextPath() + "/" + modelView.getUrl());
+                return;
+            } else {
+                // Forward comme avant
+                handleModelView(modelView, request, response);
+                return;
+            }
+        }
 
         else if (method.isAnnotationPresent(RestApi.class)) 
         {
@@ -484,9 +499,18 @@ public class Utils {
                                         HttpServletResponse response) 
         throws ServletException, IOException 
     {
+        // Récupérer les messages flash de la session
+        HttpSession session = request.getSession();
+        Map<String, Object> flashData = (Map<String, Object>) session.getAttribute("flashData");
+        if (flashData != null) {
+            modelView.getData().putAll(flashData);
+            session.removeAttribute("flashData");
+        }
+        
         modelView.getData().forEach(request::setAttribute);
         request.getRequestDispatcher("/" + modelView.getUrl()).forward(request, response);
     }
+
 
     // Handle errors (forward to error page)
     public static void handleError(HttpServletRequest request, HttpServletResponse response, 
