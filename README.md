@@ -16,18 +16,20 @@
 
 
 ## ETAPES SPRINT : 
-- Sprint 0 : 
-    - Creation de branche de GIT : main , sprint0-ETU 
-    - Utilisation de pullRequest dans git
-    - Creation des dossiers de travail et de deploiement 
-    - Creation de Controller FrontController : 
-        - Avec les methodes : 
-            - processRequest 
-            - doGET 
-            - doPost 
-- Sprint 1 : 
-    - Affciaher le lien inserer : 
-        - Out.println("Lien inserer par l'utilisateur")
+### Sprint 0
+- Création des branches Git : main, sprint0-ETU
+- Utilisation des pull requests dans Git
+- Création des dossiers de travail et de déploiement
+- Création du Controller `FrontController` avec les méthodes :
+    - `processRequest`
+    - `doGET`
+    - `doPost`
+
+### Sprint 1
+- Affichage du lien inséré par l’utilisateur :
+    ```java
+    Out.println("Lien inséré par l'utilisateur");
+    ```
 
 - Sprint 2 : 
     - Creation des  Annotations :
