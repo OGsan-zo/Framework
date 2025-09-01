@@ -1,23 +1,18 @@
 # FRAMEWORK
 
-## Utilisation : 
-- Creer un package pour mettre vos 'Model' : 
-    - Exemple : controller 
-
-- Corriger la valeur de base_package dans  'web.xml' en le nom de votre package de vos 'Model' 
-
-- Annoter : 
-    - vos Models par l'annotation :  @Controller 
-    - vos methodes par l'annotation : @Url , @Get , @Post
-    - vos argumens de fonction par :
-        - @ModelParam (pour vos classes personnels)
-        - @Param (pour les types de base : int , String, ...)
-
-- Type de retour fonctionnel : 
-    - STRING 
-    - MODELVIEW 
-
-- Ajouter FileUpload pour ajouter un fichier a votre classe 
+## Utilisation
+1. Créez un package pour vos Models, par exemple : Controller
+2. Corrigez la valeur de `base_package` dans `web.xml` pour correspondre au nom de votre package
+3. Annoter vos éléments :
+    - Models avec `@Controller`
+    - Méthodes avec `@Url`, `@Get`, `@Post`
+    - Arguments de fonction :
+        - `@ModelParam` pour vos classes personnelles
+        - `@Param` pour les types de base : int, String, etc.
+4. Types de retour fonctionnels :
+    - STRING
+    - MODELVIEW
+5. Ajouter `FileUpload` pour gérer l’ajout de fichiers dans vos classes
 
 
 ## ETAPES SPRINT : 
