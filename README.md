@@ -85,6 +85,7 @@
 ### Sprint 11
 - Gestion et affichage des erreurs
 
-- Sprint 12 :
-    - Ajout class FileUpload
-    - Ajout d'upload fichier 
+### Sprint 12
+- Ajout de la classe `FileUpload`
+- Ajout de la fonctionnalité d’upload de fichiers
+
