@@ -47,16 +47,16 @@
 ### Sprint 3
 - Exécution des méthodes retournant un `String`
 
-- Sprint 4 : 
-    - Creation de la classe ModelView : 
-        - HashMap <String , Object> data   : nom , valeur 
-        - String Url 
-        - Une fonction addObject( )
-    - Gerer les types de retour :
-        - Type String : On affiche seulement la valeur sur la page d'affichage 
-        - Type ModeView : On renvoie l'utilisateur dans l'URL de la view par la methode ReqeuestDispatcher : 
-            - request.setAttributes(String value , Object data) 
-        - Redirection vers la view par request.forward()
+### Sprint 4
+- Création de la classe `ModelView` :
+    - `HashMap<String, Object> data` : nom et valeur
+    - `String Url`
+    - Fonction `addObject()`
+- Gestion des types de retour :
+    - Type `String` : affichage direct de la valeur sur la page
+    - Type `ModelView` : redirection vers la view via `RequestDispatcher` :
+        - `request.setAttributes(String value, Object data)`
+        - `request.forward()`
 
 - Sprint 5 : 
     - Gestion des Exceptions : 
