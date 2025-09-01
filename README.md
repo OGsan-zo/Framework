@@ -31,24 +31,22 @@
     Out.println("Lien inséré par l'utilisateur");
     ```
 
-- Sprint 2 : 
-    - Creation des  Annotations :
-        - Controller et Get 
-    - Insertion des annotations sur les models 
-    - Creation de la classe Mapping : 
-        - Contenant : 
-            - String className 
-            - String methodName 
-    - Inserer un HASHMAP dans le FrontController : 
-        - HashMap : 
-            - String 
-            - Class Mapping 
-    - Creer une fonction dans le FrontController : 
-        - init() : 
-            - Creer un Scanner de Controller ; 
-        
-- Sprint 3 : 
-    - Executer des methode retournant le String 
+### Sprint 2
+- Création des annotations :
+    - `@Controller` et `@Get`
+- Insertion des annotations sur les Models
+- Création de la classe `Mapping` contenant :
+    - `String className`
+    - `String methodName`
+- Ajout d’un `HashMap` dans `FrontController` :
+    - Clé : String
+    - Valeur : Mapping
+- Création de la fonction `init()` dans `FrontController` :
+    - Initialise un scanner de Controllers
+
+### Sprint 3
+- Exécution des méthodes retournant un `String`
+
 - Sprint 4 : 
     - Creation de la classe ModelView : 
         - HashMap <String , Object> data   : nom , valeur 
