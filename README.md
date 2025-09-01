@@ -82,8 +82,8 @@
 - Ajout de l’annotation `@URL`
 - Vérification des méthodes et de l’utilisation des annotations
  
-- Sprint 11 :
-    - Gestion et apparition des erreurs
+### Sprint 11
+- Gestion et affichage des erreurs
 
 - Sprint 12 :
     - Ajout class FileUpload
