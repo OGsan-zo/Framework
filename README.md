@@ -78,9 +78,9 @@
     - Création de l’annotation `@RestApi`
     - Transformation des résultats attendus en JSON
         
-- Sprint 10 : 
-    - Ajout annotation URL : 
-    - Verification des methodes et d'utilisation des annotations
+### Sprint 10
+- Ajout de l’annotation `@URL`
+- Vérification des méthodes et de l’utilisation des annotations
  
 - Sprint 11 :
     - Gestion et apparition des erreurs
