@@ -58,14 +58,16 @@
         - `request.setAttributes(String value, Object data)`
         - `request.forward()`
 
-- Sprint 5 : 
-    - Gestion des Exceptions : 
-        - Lors du BUILD : 
-            - scanner le package : s'il existe 
-            - Printstacktrace vers les classes ayant un URL de meme valeur 
-        - REQUEST :
-            - Type de retour : afficher que le type de retour est introuvable 
-            - Erreur 404 si on ne trouve pas de page lier a la methode placer par l'utilisateur 
+### Sprint 5
+- Gestion des exceptions :
+
+**Lors du BUILD :**
+- Scanner le package pour vérifier son existence
+- Afficher les erreurs (`printStackTrace`) pour les classes ayant une URL dupliquée
+
+**Lors des REQUEST :**
+- Type de retour : afficher un message si le type de retour est introuvable
+- Erreur 404 si aucune page correspondante n’est trouvée pour la méthode de l’utilisateur
 
 - Sprint 6 : 
     - Gestion des Parametres pour formulaire : 
