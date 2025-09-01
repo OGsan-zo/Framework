@@ -73,11 +73,10 @@
 - Gestion des paramètres pour formulaire :
     - Annotation des paramètres entrants de types de base avec `@Param`
       
-
-- Sprint 9 : 
-    - RESTAPI : 
-        - Creation annotation RestApi 
-        - Transformation en JSON du resultat attendue 
+### Sprint 9
+- REST API :
+    - Création de l’annotation `@RestApi`
+    - Transformation des résultats attendus en JSON
         
 - Sprint 10 : 
     - Ajout annotation URL : 
