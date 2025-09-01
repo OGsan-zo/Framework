@@ -69,10 +69,10 @@
 - Type de retour : afficher un message si le type de retour est introuvable
 - Erreur 404 si aucune page correspondante n’est trouvée pour la méthode de l’utilisateur
 
-- Sprint 6 : 
-    - Gestion des Parametres pour formulaire : 
-        - Annotation des parametres entrant de type de base avec @Param 
-        
+### Sprint 6
+- Gestion des paramètres pour formulaire :
+    - Annotation des paramètres entrants de types de base avec `@Param`
+      
 
 - Sprint 9 : 
     - RESTAPI : 
